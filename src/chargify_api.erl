@@ -1,10 +1,11 @@
--module(chargify_req).
-% -export([get/3,
-%          delete/3,
-%          post/4,
-%          put/4]).
+-module(chargify_api).
+-export([get/3,
+         delete/3,
+         delete/4,
+         post/4,
+         put/4]).
  
--compile(export_all).
+%-compile(export_all).
          
 get(Account, Key, Path) ->
   request(Account, Key, Path, get, []).

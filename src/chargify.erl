@@ -1,97 +1,128 @@
-%%%-------------------------------------------------------------------
-%%% File    : chargify.erl
-%%% Author  : Matt Heitzenroder <mheitzenroder@gmail.com>
-%%% Description : The Chargify server.
-%%%
-%%% Created :  19 Dec 2010 by Matt Heitzenroder <mheitzenroder@gmail.com>
-%%%-------------------------------------------------------------------
 -module(chargify).
+-compile(export_all).
 
--behaviour(gen_server).
+list_subscriptions(Account, Key) ->
+  Path = "/subscriptions.json",
+  chargify_api:get(Account, Key, Path).
+  
+list_subscriptions(Account, Key, Page, PerPage) when is_integer(Page), is_integer(PerPage) ->
+  PageStr = integer_to_list(Page),
+  PerPageStr = integer_to_list(PerPage),
+  Path = "/subscriptions.json" ++ "?page=" ++ PageStr ++ "&per_page=" ++ PerPageStr,
+  chargify_api:get(Account, Key, Path).
 
-%% API
--export([start_link/0]).
+customer_subscriptions(Account, Key, CustomerId) when is_list(CustomerId) ->
+  Path = "/customers/"++CustomerId++"/subscriptions"++".json",
+  chargify_api:get(Account, Key, Path).
+  
+get_subscription(Account, Key, Id) when is_list(Id) ->
+  Path = "/subscriptions/" ++ Id ++ ".json",
+  chargify_api:get(Account, Key, Path).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+new_subscription(Account, Key, SubscriptionId, Customer, CreditCard) ->
+  new_subscription(Account, Key, SubscriptionId, Customer, CreditCard, []).
 
--record(state, {account,
-                apikey}).
+new_subscription(Account, Key, SubscriptionId, Customer, CreditCard, Coupon) 
+  when is_list(SubscriptionId), is_list(Customer), is_list(CreditCard), is_list(Coupon) ->
+    Path = "/subscriptions.json",
+    Subscription =  [{<<"subscription">>, [{<<"customer_attributes">>, Customer},
+                                            <<"credit_card_attributes">>, CreditCard]}],
+    case Coupon =/= [] of 
+      true -> Create = Subscription ++ [{<<"coupon_code">>, Coupon}];
+      false -> Create = Subscription
+    end,
+    chargify_api:post(Account, Key, Path, Create).
 
-%%====================================================================
-%% API
-%%====================================================================
-%%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
-%%--------------------------------------------------------------------
-start_link() ->
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+update_subscription(Account, Key, SubscriptionId, Customer, CreditCard) 
+  when is_list(SubscriptionId), is_list(Customer), is_list(CreditCard) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
+    case Customer =/= [] of
+      true -> CustomerAttr = [{<<"customer_attributes">>, Customer}];
+      false -> CustomerAttr = []
+    end, 
+    case CreditCard =/= [] of 
+      true -> CreditAttr = [{<<"credit_card_attributes">>, CreditCard}];
+      false -> CreditAttr = []
+    end,
+    Update =  [{<<"subscription">>, CreditAttr ++ CustomerAttr}],
+    chargify_api:put(Account, Key, Path, Update).
+    
+cancel_subscription(Account, Key, SubscriptionId, CancelMsg) 
+  when is_list(SubscriptionId), is_list(CancelMsg) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
+    Cancel = [{<<"subscription">>, [{<<"cancellation_message">>, CancelMsg}]}],
+    chargify_api:delete(Account, Key, Path, Cancel).
+    
+reactivate_subscription(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
+  Path = "/subscriptions/" ++ SubscriptionId ++ "/reactivate.json",
+  chargify_api:put(Account, Key, Path, []).  
 
-%%====================================================================
-%% gen_server callbacks
-%%====================================================================
+reset(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
+  Path = "/subscriptions/" ++ SubscriptionId ++ "/reset_balance.json",
+  chargify_api:put(Account, Key, Path, []). 
+  
+charge(Account, Key, SubscriptionId, Amount, Memo)
+  when is_list(SubscriptionId), is_list(Amount), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/charges.json",
+    Charge = [{<<"charge">>, [{<<"amount">>, Amount}, {<<"memo">>, Memo}]}],
+    chargify_api:post(Account, Key, Path, Charge).
+    
+charge_cents(Account, Key, SubscriptionId, Cents, Memo)
+  when is_list(SubscriptionId), is_integer(Cents), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/charges.json",
+    Charge = [{<<"charge">>, [{<<"amount_in_cents">>, Cents}, {<<"memo">>, Memo}]}],
+    chargify_api:post(Account, Key, Path, Charge).
 
-%%--------------------------------------------------------------------
-%% Function: init(Args) -> {ok, State} |
-%%                         {ok, State, Timeout} |
-%%                         ignore               |
-%%                         {stop, Reason}
-%% Description: Initiates the server
-%%--------------------------------------------------------------------
-init([]) ->
-  {ok, #state{}}.
+adjust(Account, Key, SubscriptionId, Amount, Memo)
+  when is_list(SubscriptionId), is_list(Amount), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/adjustments.json",
+    Charge = [{<<"adjustment">>, [{<<"amount">>, Amount}, {<<"memo">>, Memo}]}],
+    chargify_api:post(Account, Key, Path, Charge).
 
-%%--------------------------------------------------------------------
-%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% Description: Handling call messages
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-  Reply = ok,
-  {reply, Reply, State}.
+adjust_cents(Account, Key, SubscriptionId, Cents, Memo)
+  when is_list(SubscriptionId), is_integer(Cents), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/adjustments.json",
+    Charge = [{<<"adjustment">>, [{<<"amount_in_cents">>, Cents}, {<<"memo">>, Memo}]}],
+    chargify_api:post(Account, Key, Path, Charge).
 
-%%--------------------------------------------------------------------
-%% Function: handle_cast(Msg, State) -> {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, State}
-%% Description: Handling cast messages
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-  {noreply, State}.
+transactions(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
+  Path = "/subscriptions"++"/"++SubscriptionId++"/transactions.json",
+  chargify_api:get(Account, Key, Path).
+  
+list_products(Account, Key) ->
+  chargify_api:get(Account, Key, "/products.json").
+  
+get_product(Account, Key, Lookup) when is_tuple(Lookup) ->
+  case Lookup of 
+    {ref, Handle} -> Path = "/products/handle/" ++ Handle ++ ".json";
+    {id, Id} -> Path = "/products/" ++ Id ++ ".json"
+  end,
+  chargify_api:get(Account, Key, Path).
 
-%%--------------------------------------------------------------------
-%% Function: handle_info(Info, State) -> {noreply, State} |
-%%                                       {noreply, State, Timeout} |
-%%                                       {stop, Reason, State}
-%% Description: Handling all non call/cast messages
-%%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-  {noreply, State}.
+list_customers(Account, Key) ->
+  chargify_api:get(Account, Key, "/customers.json").
 
-%%--------------------------------------------------------------------
-%% Function: terminate(Reason, State) -> void()
-%% Description: This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any necessary
-%% cleaning up. When it returns, the gen_server terminates with Reason.
-%% The return value is ignored.
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-  ok.
+get_customer(Account, Key, Lookup) when is_tuple(Lookup) ->
+  case Lookup of 
+    {ref, Ref} -> Path = "/customers/lookup.json?reference=" ++ Ref;
+    {id, Id} -> Path = "/customers/" ++ Id ++ ".json"
+  end,
+  chargify_api:get(Account, Key, Path).
 
-%%--------------------------------------------------------------------
-%% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% Description: Convert process state when code is changed
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
-
+save_customer(Account, Key, Customer) when is_list(Customer) ->
+  case lists:keyfind(<<"id">>,1,Customer) of
+    false -> 
+      Required = [<<"first_name">>, <<"last_name">>, <<"email">>],
+      Result = lists:foldl(fun(E, L) -> L ++ [lists:keymember(E,1,Customer)] end, [], Required),
+      case lists:member(false, Result) of
+        true -> {error, require_field_not_found};
+        false -> 
+          Path = "/customers.json",
+          chargify_api:put(Account, Key, Path, [{<<"customer">>, Customer}])
+      end;
+    {<<"id">>, Id} ->
+      %% Update
+      Path = "/customers/" ++ Id ++ ".json",
+      chargify_api:put(Account, Key, Path, [{<<"customer">>, Customer}]) 
+  end.
+  
