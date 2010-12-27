@@ -19,22 +19,37 @@ get_subscription(Account, Key, Id) when is_list(Id) ->
   Path = "/subscriptions/" ++ Id ++ ".json",
   chargify_api:get(Account, Key, Path).
 
-new_subscription(Account, Key, SubscriptionId, Customer, CreditCard) ->
-  new_subscription(Account, Key, SubscriptionId, Customer, CreditCard, []).
+save_subscription(Account, Key, Product, Customer, CreditCard) ->
+  save_subscription(Account, Key, Product, Customer, CreditCard, []).
 
-new_subscription(Account, Key, SubscriptionId, Customer, CreditCard, Coupon) 
-  when is_list(SubscriptionId), is_list(Customer), is_list(CreditCard), is_list(Coupon) ->
+save_subscription(Account, Key, Product, Customer, CreditCard, Coupon) 
+  when is_tuple(Product), is_list(Customer), is_list(CreditCard), is_list(Coupon) ->
     Path = "/subscriptions.json",
-    Subscription =  [{<<"subscription">>, [{<<"customer_attributes">>, Customer},
-                                            <<"credit_card_attributes">>, CreditCard]}],
-    case Coupon =/= [] of 
-      true -> Create = Subscription ++ [{<<"coupon_code">>, Coupon}];
-      false -> Create = Subscription
+    case lists:keyfind(<<"id">>, 1, Customer) of 
+      {<<"id">>, Id} -> 
+        CustomerAttributes = lists:keydelete(<<"id">>, 1, Customer),
+        S = [{<<"customer_id">>, Id}] ++ [{<<"customer_attributes">>, CustomerAttributes}];
+      false -> 
+        S = [{<<"customer_attributes">>, Customer}]
     end,
-    chargify_api:post(Account, Key, Path, Create).
+    S1 = S ++ [{<<"credit_card_attributes">>, CreditCard}],
+    case Product of 
+      {handle, Handle} -> Subscription = S1 ++ [{<<"product_handle">>, Handle}];
+      {id, ProdId} -> Subscription = S1 ++ [{<<"product_id">>, ProdId}]
+    end,
+    chargify_api:post(Account, Key, Path, [{<<"subscription">>, Subscription}]).
+    
+update_product_subsciption(Account, Key, SubscriptionId, ProductHandle) ->
+  update_subscription(Account, Key, SubscriptionId, ProductHandle, [], []).
 
-update_subscription(Account, Key, SubscriptionId, Customer, CreditCard) 
-  when is_list(SubscriptionId), is_list(Customer), is_list(CreditCard) ->
+update_customer_subscription(Account, Key, SubscriptionId, Customer) ->
+  update_subscription(Account, Key, SubscriptionId, [], Customer, []).
+  
+update_creditcard_subscription(Account, Key, SubscriptionId, CreditCard) ->
+  update_subscription(Account, Key, SubscriptionId, [], [], CreditCard).
+
+update_subscription(Account, Key, SubscriptionId, ProductHandle, Customer, CreditCard) 
+  when is_list(SubscriptionId), is_list(ProductHandle), is_list(Customer), is_list(CreditCard) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
     case Customer =/= [] of
       true -> CustomerAttr = [{<<"customer_attributes">>, Customer}];
@@ -44,7 +59,11 @@ update_subscription(Account, Key, SubscriptionId, Customer, CreditCard)
       true -> CreditAttr = [{<<"credit_card_attributes">>, CreditCard}];
       false -> CreditAttr = []
     end,
-    Update =  [{<<"subscription">>, CreditAttr ++ CustomerAttr}],
+    case ProductHandle =/= [] of 
+      true -> Product = [{<<"product_handle">>, ProductHandle}];
+      false -> Product = []
+    end,
+    Update =  [{<<"subscription">>, CreditAttr ++ CustomerAttr ++ Product}],
     chargify_api:put(Account, Key, Path, Update).
     
 cancel_subscription(Account, Key, SubscriptionId, CancelMsg) 
@@ -118,7 +137,7 @@ save_customer(Account, Key, Customer) when is_list(Customer) ->
         true -> {error, require_field_not_found};
         false -> 
           Path = "/customers.json",
-          chargify_api:put(Account, Key, Path, [{<<"customer">>, Customer}])
+          chargify_api:post(Account, Key, Path, [{<<"customer">>, Customer}])
       end;
     {<<"id">>, Id} ->
       %% Update

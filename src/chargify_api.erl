@@ -29,11 +29,7 @@ request(Account, Key, Path, Method, Term)
     CaCertFile = filename:join(code:priv_dir(chargify), "cacert.pem"),
     Options = [{basic_auth, {Key ,"x"}}, {is_ssl, true}, {ssl_options, 
               [{verify, verify_type()}, {cacertfile, CaCertFile}]}],
-    case Term of 
-      {_,_} -> Struct = struct([Term]);
-      [{_,_}|_] -> Struct = struct(Term);
-      _ -> Struct = Term
-    end,
+    Struct = struct(Term),
     JSON = mochijson:encode(Struct),
     URL = "https://"++Account++".chargify.com"++Path,
     Headers = [{"Content-Type", "application/json"}, {"Accept", "application/json"}],
@@ -41,7 +37,7 @@ request(Account, Key, Path, Method, Term)
       {ok, _Status, _ResponseHeaders, ResponseBody} ->
         %% return term() deconstructed from JSON
         Result = mochijson:decode(ResponseBody),
-        destruct(Result);
+        {ok, destruct(Result)};
       {error, Reason} -> {error, Reason}
     end.
 
@@ -56,6 +52,7 @@ struct(Elem, Acc) ->
   end.
 struct(Term) ->
   case Term of 
+    {_,_}-> {struct, lists:foldl(fun struct/2, [], Term)};
     [{_,_}|_] -> {struct, lists:foldl(fun struct/2, [], Term)};
     _ -> Term
   end.
