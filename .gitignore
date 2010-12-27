@@ -1,0 +1,12 @@
+.DS_Store
+erl_crash.dump
+*.beam
+*.swp
+*.swo
+*.pid
+*.log*
+*.o
+deps
+ebin
+priv
+.eunit
