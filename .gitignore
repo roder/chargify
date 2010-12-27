@@ -7,6 +7,5 @@ erl_crash.dump
 *.log*
 *.o
 deps
-ebin
 priv
 .eunit
