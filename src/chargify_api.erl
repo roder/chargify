@@ -59,21 +59,19 @@ struct(Term) ->
 
 destruct(Elem, Acc) ->
   case Elem of 
-    {Key, {struct, List}} ->
+    {Key, {Struct, List}} when Struct =:= struct; Struct =:= array ->
       NestedList = lists:foldl(fun destruct/2, [], List),
       Acc ++ [{Key, NestedList}];
-    {Key, {array, List}} ->
+    {Struct, List} when Struct =:= struct; Struct =:= array ->
       NestedList = lists:foldl(fun destruct/2, [], List),
-      Acc ++ [{Key, NestedList}];
+      Acc ++ NestedList;
     _ ->
       Acc ++ [Elem]
   end.
 destruct(Struct) ->
   case Struct of 
-    {struct, List} ->
-      {struct, Term} = {struct, lists:foldl(fun destruct/2,[], List)};
-    {array, List} ->
-      {array, Term} = {array, lists:foldl(fun destruct/2,[], List)};
+    {Type, List} when Type =:= struct; Type =:= array ->
+      {Type, Term} = {Type, lists:foldl(fun destruct/2,[], List)};
     [_|_] -> Term = lists:foldl(fun destruct/2,[], Struct);
     _ -> Term = Struct
   end,

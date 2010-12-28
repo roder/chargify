@@ -80,6 +80,22 @@ reset(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
   Path = "/subscriptions/" ++ SubscriptionId ++ "/reset_balance.json",
   chargify_api:put(Account, Key, Path, []). 
   
+refund(Account, Key, SubscriptionId, PaymentId, Amount, Memo) 
+  when is_list(SubscriptionId), is_list(PaymentId), is_list(Amount), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/refunds.json",
+    B = [{<<"payment_id">>, PaymentId}],
+    B1 = [{<<"amount">>, Amount}] ++ B,
+    B2 = [{<<"memo">>, Memo}] ++ B1,
+    chargify_api:post(Account, Key, Path, B2).
+
+refund_cents(Account, Key, SubscriptionId, PaymentId, Cents, Memo) 
+  when is_list(SubscriptionId), is_list(PaymentId), is_integer(Cents), is_list(Memo) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ "/refunds.json",
+    B = [{<<"payment_id">>, PaymentId}],
+    B1 = [{<<"amount_in_cents">>, Cents}] ++ B,
+    B2 = [{<<"memo">>, Memo}] ++ B1,
+    chargify_api:post(Account, Key, Path, B2).
+  
 charge(Account, Key, SubscriptionId, Amount, Memo)
   when is_list(SubscriptionId), is_list(Amount), is_list(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/charges.json",
