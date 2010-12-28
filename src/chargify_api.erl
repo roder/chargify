@@ -34,10 +34,15 @@ request(Account, Key, Path, Method, Term)
     URL = "https://"++Account++".chargify.com"++Path,
     Headers = [{"Content-Type", "application/json"}, {"Accept", "application/json"}],
     case ibrowse:send_req(URL, Headers, Method, JSON, Options, infinity) of
-      {ok, _Status, _ResponseHeaders, ResponseBody} ->
-        %% return term() deconstructed from JSON
-        Result = mochijson:decode(ResponseBody),
-        {ok, destruct(Result)};
+      {ok, Status, _ResponseHeaders, ResponseBody} ->
+        case Status of
+          Valid when Valid =:= "201"; Valid =:= "200" ->
+            %% HACK: leave me alone, this is good enough for now.
+            %% return term() deconstructed from JSON
+            Result = mochijson:decode(ResponseBody),
+            {ok, destruct(Result)};
+          _ -> {error ,[{status, Status}, {body, ResponseBody}]}
+        end;
       {error, Reason} -> {error, Reason}
     end.
 

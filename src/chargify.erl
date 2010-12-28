@@ -20,10 +20,10 @@ get_subscription(Account, Key, Id) when is_list(Id) ->
   chargify_api:get(Account, Key, Path).
 
 save_subscription(Account, Key, Product, Customer, CreditCard) ->
-  save_subscription(Account, Key, Product, Customer, CreditCard, []).
+  save_subscription(Account, Key, Product, Customer, CreditCard, [], []).
 
-save_subscription(Account, Key, Product, Customer, CreditCard, Coupon) 
-  when is_tuple(Product), is_list(Customer), is_list(CreditCard), is_list(Coupon) ->
+save_subscription(Account, Key, Product, Customer, CreditCard, Coupon, Component) 
+  when is_tuple(Product), is_list(Customer), is_list(CreditCard), is_list(Coupon), is_list(Component) ->
     Path = "/subscriptions.json",
     case lists:keyfind(<<"id">>, 1, Customer) of 
       {<<"id">>, Id} -> 
@@ -33,9 +33,19 @@ save_subscription(Account, Key, Product, Customer, CreditCard, Coupon)
         S = [{<<"customer_attributes">>, Customer}]
     end,
     S1 = S ++ [{<<"credit_card_attributes">>, CreditCard}],
+    case Coupon =/= [] of 
+      true -> S2 = S1 ++ [{<<"coupon_code">>, Coupon}];
+      false -> S2 = S1
+    end,
+    Required = [<<"coupon_id">>, <<"allocated_quantity">>],
+    Result = lists:foldl(fun(E, L) -> L ++ [lists:keymember(E,1,Component)] end, [], Required),
+    case lists:member(false, Result) of
+      true -> S3 = S2;
+      false -> S3 = S2 ++ [{<<"components">>, Component}]
+    end,
     case Product of 
-      {handle, Handle} -> Subscription = S1 ++ [{<<"product_handle">>, Handle}];
-      {id, ProdId} -> Subscription = S1 ++ [{<<"product_id">>, ProdId}]
+      {handle, Handle} -> Subscription = S3 ++ [{<<"product_handle">>, Handle}];
+      {id, ProdId} -> Subscription = S3 ++ [{<<"product_id">>, ProdId}]
     end,
     chargify_api:post(Account, Key, Path, [{<<"subscription">>, Subscription}]).
     
@@ -72,6 +82,15 @@ cancel_subscription(Account, Key, SubscriptionId, CancelMsg)
     Cancel = [{<<"subscription">>, [{<<"cancellation_message">>, CancelMsg}]}],
     chargify_api:delete(Account, Key, Path, Cancel).
     
+subscription_transactions(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
+  Path = "/subscriptions/"++SubscriptionId++"/transactions.json",
+  chargify_api:get(Account, Key, Path).
+  
+update_component_qty(Account, Key, SubscriptionId, ComponentId, Qty) 
+  when is_list(SubscriptionId), is_list(ComponentId), is_integer(Qty) ->
+  Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++".json",
+  chargify_api:put(Account, Key, Path, [{<<"component">>, [{<<"allocated_quantity">>, Qty}]}]).
+
 reactivate_subscription(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
   Path = "/subscriptions/" ++ SubscriptionId ++ "/reactivate.json",
   chargify_api:put(Account, Key, Path, []).  
@@ -119,9 +138,18 @@ adjust_cents(Account, Key, SubscriptionId, Cents, Memo)
     Path = "/subscriptions/" ++ SubscriptionId ++ "/adjustments.json",
     Charge = [{<<"adjustment">>, [{<<"amount_in_cents">>, Cents}, {<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Charge).
+    
+migrate(Account, Key, SubscriptionId, Product) 
+  when is_list(SubscriptionId), is_tuple(Product) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++"/migrations.json",
+    case Product of 
+      {handle, Handle} -> Migration = [{<<"product_handle">>, Handle}];
+      {id, Id} -> Migration = [{<<"product_id">>, Id}]
+    end,
+    chargify_api:post(Account, Key, Path, [{<<"migration">>, Migration}]).
 
-transactions(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
-  Path = "/subscriptions"++"/"++SubscriptionId++"/transactions.json",
+transactions(Account, Key) ->
+  Path = "/transactions.json",
   chargify_api:get(Account, Key, Path).
   
 list_products(Account, Key) ->
@@ -161,3 +189,28 @@ save_customer(Account, Key, Customer) when is_list(Customer) ->
       chargify_api:put(Account, Key, Path, [{<<"customer">>, Customer}]) 
   end.
   
+list_components(Account, Key, ProductFamilyId) when is_list(ProductFamilyId) ->
+  Path = "/product_families/"++ProductFamilyId++"/components.json",
+  chargify_api:get(Account, Key, Path).
+  
+list_usages(Account, Key, SubscriptionId, ComponentId) 
+  when is_list(SubscriptionId), is_list(ComponentId) ->
+    Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++"/usages.json",
+    chargify_api:get(Account, Key, Path).
+    
+list_usages(Account, Key, SubscriptionId, ComponentId, Qty, Memo) 
+  when is_list(SubscriptionId), is_list(ComponentId), is_integer(Qty), is_list(Memo) ->
+    Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++"/usages.json",
+    Body = [{<<"usage">>, [{<<"quantity">>, Qty},{<<"memo">>, Memo}]}],
+    chargify_api:post(Account, Key, Path, Body).
+
+
+get_coupon(Account, Key, ProductFamilyId, CouponId) 
+  when is_list(ProductFamilyId), is_list(CouponId) ->
+    Path = "/product_families/"++ProductFamilyId++"/coupons/"++CouponId++".json",
+    chargify_api:get(Account, Key, Path).
+
+find_coupon(Account, Key, ProductFamilyId, CouponCode) 
+  when is_list(ProductFamilyId), is_list(CouponCode) ->
+    Path = "/product_families/"++ProductFamilyId++"/coupons/find.json?code="++CouponCode,
+    chargify_api:get(Account, Key, Path).
