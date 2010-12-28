@@ -198,7 +198,7 @@ list_usages(Account, Key, SubscriptionId, ComponentId)
     Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++"/usages.json",
     chargify_api:get(Account, Key, Path).
     
-list_usages(Account, Key, SubscriptionId, ComponentId, Qty, Memo) 
+save_usage(Account, Key, SubscriptionId, ComponentId, Qty, Memo) 
   when is_list(SubscriptionId), is_list(ComponentId), is_integer(Qty), is_list(Memo) ->
     Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++"/usages.json",
     Body = [{<<"usage">>, [{<<"quantity">>, Qty},{<<"memo">>, Memo}]}],
