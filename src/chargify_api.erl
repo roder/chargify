@@ -30,7 +30,7 @@ request(Account, Key, Path, Method, Term)
     Options = [{basic_auth, {Key ,"x"}}, {is_ssl, true}, {ssl_options, 
               [{verify, verify_type()}, {cacertfile, CaCertFile}]}],
     Struct = struct(Term),
-    JSON = mochijson:encode(Struct),
+    JSON = mochijson2:encode(Struct),
     URL = "https://"++Account++".chargify.com"++Path,
     Headers = [{"Content-Type", "application/json"}, {"Accept", "application/json"}],
     case ibrowse:send_req(URL, Headers, Method, JSON, Options, infinity) of
@@ -39,7 +39,7 @@ request(Account, Key, Path, Method, Term)
           Valid when Valid =:= "201"; Valid =:= "200" ->
             %% HACK: leave me alone, this is good enough for now.
             %% return term() deconstructed from JSON
-            Result = mochijson:decode(ResponseBody),
+            Result = mochijson2:decode(ResponseBody),
             {ok, destruct(Result)};
           _ -> {error ,[{status, Status}, {body, ResponseBody}]}
         end;

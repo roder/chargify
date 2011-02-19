@@ -1,24 +1,41 @@
 -module(chargify).
 -compile(export_all).
 
+
+%% Return the first 2000 subscriptions available for the account
+%% Account = Key = string()
 list_subscriptions(Account, Key) ->
   Path = "/subscriptions.json",
   chargify_api:get(Account, Key, Path).
-  
+
+
+%% Return N subscriptions per "Page" for the account where N is PerPageStr
+%% Account = Key = Page = PerPageStr = string()  
 list_subscriptions(Account, Key, Page, PerPage) when is_integer(Page), is_integer(PerPage) ->
   PageStr = integer_to_list(Page),
   PerPageStr = integer_to_list(PerPage),
   Path = "/subscriptions.json" ++ "?page=" ++ PageStr ++ "&per_page=" ++ PerPageStr,
   chargify_api:get(Account, Key, Path).
 
+%% Return the subscriptions for a customer by id
+%% Account = Key = CustomerID = string()
 customer_subscriptions(Account, Key, CustomerId) when is_list(CustomerId) ->
   Path = "/customers/"++CustomerId++"/subscriptions"++".json",
   chargify_api:get(Account, Key, Path).
-  
+
+%% Return the subscription specified by Id
+%% Account = Key = Id = string()  
 get_subscription(Account, Key, Id) when is_list(Id) ->
   Path = "/subscriptions/" ++ Id ++ ".json",
   chargify_api:get(Account, Key, Path).
 
+%% Create a new Subscription with Customer and CreditCard objects
+%% Account = Key = string()
+%% ProductId = integer()
+%% ProductHandle = binary()
+%% Product = {id, ProductID} || {handle, ProductHandle}
+%% Customer = [{<<"first_name">>,binary()} {<<"last_name">>, binary()}, {<<"email">>, binary()}]
+%% CreditCard = [{<<"full_number">>, integer()}, {<<"expiration_month">>, integer()},{<<"expiration_year">>, integer()}]
 save_subscription(Account, Key, Product, Customer, CreditCard) ->
   save_subscription(Account, Key, Product, Customer, CreditCard, [], []).
 
