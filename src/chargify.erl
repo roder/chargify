@@ -94,7 +94,7 @@ update_subscription(Account, Key, SubscriptionId, ProductHandle, Customer, Credi
     chargify_api:put(Account, Key, Path, Update).
     
 cancel_subscription(Account, Key, SubscriptionId, CancelMsg) 
-  when is_list(SubscriptionId), is_list(CancelMsg) ->
+  when is_list(SubscriptionId), is_binary(CancelMsg) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
     Cancel = [{<<"subscription">>, [{<<"cancellation_message">>, CancelMsg}]}],
     chargify_api:delete(Account, Key, Path, Cancel).
@@ -117,7 +117,7 @@ reset(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
   chargify_api:put(Account, Key, Path, []). 
   
 refund(Account, Key, SubscriptionId, PaymentId, Amount, Memo) 
-  when is_list(SubscriptionId), is_list(PaymentId), is_list(Amount), is_list(Memo) ->
+  when is_list(SubscriptionId), is_binary(PaymentId), is_binary(Amount), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/refunds.json",
     B = [{<<"payment_id">>, PaymentId}],
     B1 = [{<<"amount">>, Amount}] ++ B,
@@ -125,7 +125,7 @@ refund(Account, Key, SubscriptionId, PaymentId, Amount, Memo)
     chargify_api:post(Account, Key, Path, B2).
 
 refund_cents(Account, Key, SubscriptionId, PaymentId, Cents, Memo) 
-  when is_list(SubscriptionId), is_list(PaymentId), is_integer(Cents), is_list(Memo) ->
+  when is_list(SubscriptionId), is_binary(PaymentId), is_binary(Cents), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/refunds.json",
     B = [{<<"payment_id">>, PaymentId}],
     B1 = [{<<"amount_in_cents">>, Cents}] ++ B,
@@ -133,25 +133,25 @@ refund_cents(Account, Key, SubscriptionId, PaymentId, Cents, Memo)
     chargify_api:post(Account, Key, Path, B2).
   
 charge(Account, Key, SubscriptionId, Amount, Memo)
-  when is_list(SubscriptionId), is_list(Amount), is_list(Memo) ->
+  when is_list(SubscriptionId), is_binary(Amount), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/charges.json",
     Charge = [{<<"charge">>, [{<<"amount">>, Amount}, {<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Charge).
     
 charge_cents(Account, Key, SubscriptionId, Cents, Memo)
-  when is_list(SubscriptionId), is_integer(Cents), is_list(Memo) ->
+  when is_list(SubscriptionId), is_integer(Cents), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/charges.json",
     Charge = [{<<"charge">>, [{<<"amount_in_cents">>, Cents}, {<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Charge).
 
 adjust(Account, Key, SubscriptionId, Amount, Memo)
-  when is_list(SubscriptionId), is_list(Amount), is_list(Memo) ->
+  when is_list(SubscriptionId), is_binary(Amount), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/adjustments.json",
     Charge = [{<<"adjustment">>, [{<<"amount">>, Amount}, {<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Charge).
 
 adjust_cents(Account, Key, SubscriptionId, Cents, Memo)
-  when is_list(SubscriptionId), is_integer(Cents), is_list(Memo) ->
+  when is_list(SubscriptionId), is_integer(Cents), is_binary(Memo) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ "/adjustments.json",
     Charge = [{<<"adjustment">>, [{<<"amount_in_cents">>, Cents}, {<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Charge).
@@ -189,7 +189,7 @@ get_customer(Account, Key, Lookup) when is_tuple(Lookup) ->
   end,
   chargify_api:get(Account, Key, Path).
 
-save_customer(Account, Key, Customer) when is_list(Customer) ->
+save_customer(Account, Key, Customer) when is_binary(Customer) ->
   case lists:keyfind(<<"id">>,1,Customer) of
     false -> 
       Required = [<<"first_name">>, <<"last_name">>, <<"email">>],
@@ -216,7 +216,7 @@ list_usages(Account, Key, SubscriptionId, ComponentId)
     chargify_api:get(Account, Key, Path).
     
 save_usage(Account, Key, SubscriptionId, ComponentId, Qty, Memo) 
-  when is_list(SubscriptionId), is_list(ComponentId), is_integer(Qty), is_list(Memo) ->
+  when is_list(SubscriptionId), is_list(ComponentId), is_integer(Qty), is_binary(Memo) ->
     Path = "/subscriptions/"++SubscriptionId++"/components/"++ComponentId++"/usages.json",
     Body = [{<<"usage">>, [{<<"quantity">>, Qty},{<<"memo">>, Memo}]}],
     chargify_api:post(Account, Key, Path, Body).
