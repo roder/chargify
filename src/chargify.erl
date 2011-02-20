@@ -63,6 +63,7 @@ save_subscription(Account, Key, Product, Customer, CreditCard, Coupon, Component
                     {attributes, CAttr} ->
                         [{<<"customer_attributes">>, CAttr}]
                 end,
+    Payment = [{<<"payment_profile_attributes">>, CreditCard}],
     Coupon1 = case Coupon of
                   undefined ->
                       [];
@@ -75,7 +76,7 @@ save_subscription(Account, Key, Product, Customer, CreditCard, Coupon, Component
                      _ ->
                          [{<<"components">>, Components}]
                   end,
-    Subscription = Product1 ++ Customer1 ++ Coupon1 ++ Components1,
+    Subscription = Product1 ++ Customer1 ++ Payment ++ Coupon1 ++ Components1,
     chargify_api:post(Account, Key, Path, [{<<"subscription">>, Subscription}]).
 
 update_product_subsciption(Account, Key, SubscriptionId, ProductHandle) ->
