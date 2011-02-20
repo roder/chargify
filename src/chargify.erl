@@ -109,7 +109,19 @@ update_subscription(Account, Key, SubscriptionId, ProductHandle, Customer, Credi
 cancel_subscription(Account, Key, SubscriptionId, CancelMsg)
   when is_list(SubscriptionId), is_binary(CancelMsg) ->
     Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
-    Cancel = [{<<"subscription">>, [{<<"cancellation_message">>, CancelMsg}]}],
+    Cancel = [{<<"subscription">>,
+               [{<<"cancellation_message">>, CancelMsg}
+               ]}],
+    chargify_api:delete(Account, Key, Path, Cancel).
+
+%% Delayed :: boolean()
+delayed_cancel_subscription(Account, Key, SubscriptionId, CancelMsg)
+  when is_list(SubscriptionId), is_binary(CancelMsg) ->
+    Path = "/subscriptions/" ++ SubscriptionId ++ ".json",
+    Cancel = [{<<"subscription">>,
+               [{<<"cancellation_message">>, CancelMsg},
+                {<<"cancel_at_end_of_period">>, true}
+               ]}],
     chargify_api:delete(Account, Key, Path, Cancel).
 
 subscription_transactions(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
