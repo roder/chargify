@@ -47,7 +47,7 @@ save_subscription(Account, Key, Product, Customer, CreditCard) ->
 %% Coupon :: binary() | undefined
 %% Component :: [[{<<"component_id">>, integer()}, {<<"allocated_quantity">>, integer()}]] | undefined
 save_subscription(Account, Key, Product, Customer, CreditCard, Coupon, Components)
-  when is_tuple(Product), is_tuple(Customer), is_list(CreditCard), is_binary(Coupon), is_list(Components) ->
+  when is_tuple(Product), is_tuple(Customer), is_list(CreditCard) ->
     Path = "/subscriptions.json",
     Product1 = case Product of
                    {handle, Handle} ->
