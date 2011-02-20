@@ -96,7 +96,7 @@ update_subscription(Account, Key, SubscriptionId, ProductHandle, Customer, Credi
                        false -> []
                    end,
     CreditAttr = case CreditCard =/= [] of
-                     true -> [{<<"credit_card_attributes">>, CreditCard}];
+                     true -> [{<<"payment_profile_attributes">>, CreditCard}];
                      false -> []
                  end,
     Product = case ProductHandle =/= [] of
