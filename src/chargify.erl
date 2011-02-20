@@ -122,7 +122,7 @@ delayed_cancel_subscription(Account, Key, SubscriptionId, CancelMsg)
                [{<<"cancellation_message">>, CancelMsg},
                 {<<"cancel_at_end_of_period">>, true}
                ]}],
-    chargify_api:delete(Account, Key, Path, Cancel).
+    chargify_api:put(Account, Key, Path, Cancel).
 
 subscription_transactions(Account, Key, SubscriptionId) when is_list(SubscriptionId) ->
   Path = "/subscriptions/"++SubscriptionId++"/transactions.json",
